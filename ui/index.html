@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Authenticator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ============================= MAIN WINDOW ============================= -->
+  <div id="app-main" class="page" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <img src="icon.png" alt="">
+        <span>Authenticator</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn primary" id="btn-add" title="Add account manually">Add</button>
+
+        <div class="dropdown" id="scan-dropdown">
+          <button class="btn" id="btn-scan" title="Scan a QR code">Scan QR <span class="caret"></span></button>
+          <div class="menu" id="scan-menu" hidden>
+            <button data-mode="upload">
+              <span class="mi"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M5 17l4.5-4.5 3 3L16 12l3 3.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span><b>Upload image</b><small>Pick a QR image file</small></span>
+            </button>
+            <button data-mode="screenshot">
+              <span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="11.5" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span><b>Screenshot screen</b><small>Find QR anywhere on screen</small></span>
+            </button>
+            <button data-mode="overlay">
+              <span class="mi"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg></span>
+              <span><b>Live on-screen finder</b><small>Move a frame over the QR code</small></span>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn icon" id="btn-import" title="Import backup file">
+          <svg viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="btn icon" id="btn-export" title="Export backup file">
+          <svg viewBox="0 0 24 24"><path d="M12 14V4m0 0L8 8m4-4l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="btn icon" id="btn-pin" title="Open always-on-top mini window">
+          <svg viewBox="0 0 24 24"><path d="M14 4l6 6-3.5 1L13 14.5 12 19l-2.5-2.5L5 21l-2-2 4.5-4.5L5 12l4.5-1L13 7.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="list" class="list"></main>
+
+    <div id="empty" class="empty" hidden>
+      <svg viewBox="0 0 24 24" class="empty-icon"><path d="M12 2l8 3.5v5.2c0 5-3.4 9.6-8 11.3-4.6-1.7-8-6.3-8-11.3V5.5z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 12.2l2.3 2.3 4.7-4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <h2>No accounts yet</h2>
+      <p>Add one manually with a Base32 secret,<br>or scan the setup QR code shown by another<br>authenticator app or a website.</p>
+      <div class="empty-actions">
+        <button class="btn primary" id="empty-add">Add account</button>
+        <button class="btn" id="empty-scan">Scan QR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ PINNED WINDOW ============================ -->
+  <div id="app-pinned" class="page" hidden>
+    <div class="pin-header" data-tauri-drag-region>
+      <span data-tauri-drag-region>Codes</span>
+      <button class="pin-btn" id="pin-toggle" title="Toggle always on top">
+        <svg viewBox="0 0 24 24"><path d="M14 4l6 6-3.5 1L13 14.5 12 19l-2.5-2.5L5 21l-2-2 4.5-4.5L5 12l4.5-1L13 7.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="pin-btn" id="pin-close" title="Close">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div id="pin-list" class="pin-list"></div>
+  </div>
+
+  <!-- ============================ OVERLAY WINDOW =========================== -->
+  <div id="app-overlay" class="page" hidden>
+    <div id="frame" data-tauri-drag-region>
+      <div id="scan-status" data-tauri-drag-region>Scanning...</div>
+      <div id="grip" title="Resize">
+        <svg viewBox="0 0 24 24"><path d="M21 15L15 21M21 9l-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================ MODALS =============================== -->
+  <div class="modal-backdrop" id="modal-account" hidden>
+    <div class="modal">
+      <h3 id="account-modal-title">Add account</h3>
+      <label class="field">Issuer / service
+        <input id="f-issuer" placeholder="Google" spellcheck="false">
+      </label>
+      <label class="field">Account name
+        <input id="f-label" placeholder="you@example.com" spellcheck="false">
+      </label>
+      <label class="field">Secret (Base32)
+        <input id="f-secret" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="row3">
+        <label class="field">Algorithm
+          <select id="f-algo">
+            <option value="SHA1">SHA-1</option>
+            <option value="SHA256">SHA-256</option>
+            <option value="SHA512">SHA-512</option>
+          </select>
+        </label>
+        <label class="field">Digits
+          <select id="f-digits">
+            <option value="6">6</option>
+            <option value="8">8</option>
+          </select>
+        </label>
+        <label class="field">Period (s)
+          <input id="f-period" type="number" value="30" min="1" max="120">
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="account-cancel">Cancel</button>
+        <button class="btn primary" id="account-save">Save account</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-results" hidden>
+    <div class="modal">
+      <h3 id="results-title">Found accounts</h3>
+      <div id="results-list" class="results-list"></div>
+      <div class="modal-actions">
+        <button class="btn primary" id="results-close">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-busy" hidden>
+    <div class="modal busy">
+      <div class="spinner"></div>
+      <p id="busy-text">Scanning screen for QR codes...</p>
+    </div>
+  </div>
+
+  <div id="toast" hidden></div>
+  <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif" hidden>
+
+  <script src="app.js"></script>
+</body>
+</html>
